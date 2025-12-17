@@ -13,7 +13,7 @@ module ShopsavvyDataApi
   # @example Basic usage
   #   client = ShopsavvyDataApi::Client.new(api_key: "ss_live_your_api_key_here")
   #   product = client.get_product_details("012345678901")
-  #   puts product.data.name
+  #   puts product.data[0].title
   #
   # @example Using configuration
   #   config = ShopsavvyDataApi::Configuration.new(
@@ -48,20 +48,39 @@ module ShopsavvyDataApi
       @connection = build_connection
     end
 
+    # Search for products by keyword
+    #
+    # @param query [String] Search query or keyword (e.g., "iphone 15 pro", "samsung tv")
+    # @param limit [Integer] Maximum number of results (default: 20)
+    # @param offset [Integer] Pagination offset (default: 0)
+    # @return [ProductSearchResult] Search results with pagination info
+    #
+    # @example
+    #   results = client.search_products("iphone 15 pro", limit: 10)
+    #   results.data.each { |product| puts product.title }
+    def search_products(query, limit: nil, offset: nil)
+      params = { q: query }
+      params[:limit] = limit if limit
+      params[:offset] = offset if offset
+
+      response = make_request(:get, "products/search", params: params)
+      ProductSearchResult.new(response)
+    end
+
     # Look up product details by identifier
     #
     # @param identifier [String] Product identifier (barcode, ASIN, URL, model number, or ShopSavvy product ID)
     # @param format [String, nil] Response format ('json' or 'csv')
-    # @return [APIResponse<ProductDetails>] Product details
+    # @return [APIResponse<Array<ProductDetails>>] Product details (as array, even for single identifier)
     #
     # @example
     #   product = client.get_product_details("012345678901")
-    #   puts product.data.name
+    #   puts product.data[0].title
     def get_product_details(identifier, format: nil)
-      params = { identifier: identifier }
+      params = { ids: identifier }
       params[:format] = format if format
 
-      response = make_request(:get, "/products/details", params: params)
+      response = make_request(:get, "products", params: params)
       APIResponse.new(response, data_class: ProductDetails)
     end
 
@@ -73,12 +92,12 @@ module ShopsavvyDataApi
     #
     # @example
     #   products = client.get_product_details_batch(["012345678901", "B08N5WRWNW"])
-    #   products.data.each { |product| puts product.name }
+    #   products.data.each { |product| puts product.title }
     def get_product_details_batch(identifiers, format: nil)
-      params = { identifiers: identifiers.join(",") }
+      params = { ids: identifiers.join(",") }
       params[:format] = format if format
 
-      response = make_request(:get, "/products/details", params: params)
+      response = make_request(:get, "products", params: params)
       APIResponse.new(response, data_class: ProductDetails)
     end
 
@@ -87,18 +106,21 @@ module ShopsavvyDataApi
     # @param identifier [String] Product identifier
     # @param retailer [String, nil] Optional retailer to filter by
     # @param format [String, nil] Response format ('json' or 'csv')
-    # @return [APIResponse<Array<Offer>>] Current offers
+    # @return [APIResponse<Array<ProductWithOffers>>] Products with their offers
     #
     # @example
-    #   offers = client.get_current_offers("012345678901")
-    #   offers.data.each { |offer| puts "#{offer.retailer}: $#{offer.price}" }
+    #   result = client.get_current_offers("012345678901")
+    #   result.data.each do |product|
+    #     puts "Product: #{product.title}"
+    #     product.offers.each { |offer| puts "  #{offer.retailer}: $#{offer.price}" }
+    #   end
     def get_current_offers(identifier, retailer: nil, format: nil)
-      params = { identifier: identifier }
+      params = { ids: identifier }
       params[:retailer] = retailer if retailer
       params[:format] = format if format
 
-      response = make_request(:get, "/products/offers", params: params)
-      APIResponse.new(response, data_class: Offer)
+      response = make_request(:get, "products/offers", params: params)
+      APIResponse.new(response, data_class: ProductWithOffers)
     end
 
     # Get current offers for multiple products
@@ -106,14 +128,14 @@ module ShopsavvyDataApi
     # @param identifiers [Array<String>] Array of product identifiers
     # @param retailer [String, nil] Optional retailer to filter by
     # @param format [String, nil] Response format ('json' or 'csv')
-    # @return [APIResponse<Hash<String, Array<Offer>>>] Hash mapping identifiers to their offers
+    # @return [APIResponse<Array<ProductWithOffers>>] Products with their offers
     def get_current_offers_batch(identifiers, retailer: nil, format: nil)
-      params = { identifiers: identifiers.join(",") }
+      params = { ids: identifiers.join(",") }
       params[:retailer] = retailer if retailer
       params[:format] = format if format
 
-      response = make_request(:get, "/products/offers", params: params)
-      APIResponse.new(response, data_class: Offer)
+      response = make_request(:get, "products/offers", params: params)
+      APIResponse.new(response, data_class: ProductWithOffers)
     end
 
     # Get price history for a product
@@ -132,14 +154,14 @@ module ShopsavvyDataApi
     #   end
     def get_price_history(identifier, start_date, end_date, retailer: nil, format: nil)
       params = {
-        identifier: identifier,
+        ids: identifier,
         start_date: start_date,
         end_date: end_date
       }
       params[:retailer] = retailer if retailer
       params[:format] = format if format
 
-      response = make_request(:get, "/products/history", params: params)
+      response = make_request(:get, "products/offers/history", params: params)
       APIResponse.new(response, data_class: OfferWithHistory)
     end
 
@@ -160,7 +182,7 @@ module ShopsavvyDataApi
       }
       body[:retailer] = retailer if retailer
 
-      response = make_request(:post, "/products/schedule", body: body)
+      response = make_request(:post, "products/schedule", body: body)
       APIResponse.new(response)
     end
 
@@ -177,7 +199,7 @@ module ShopsavvyDataApi
       }
       body[:retailer] = retailer if retailer
 
-      response = make_request(:post, "/products/schedule", body: body)
+      response = make_request(:post, "products/schedule", body: body)
       APIResponse.new(response)
     end
 
@@ -189,7 +211,7 @@ module ShopsavvyDataApi
     #   scheduled = client.get_scheduled_products
     #   puts "Monitoring #{scheduled.data.length} products"
     def get_scheduled_products
-      response = make_request(:get, "/products/scheduled")
+      response = make_request(:get, "products/scheduled")
       APIResponse.new(response, data_class: ScheduledProduct)
     end
 
@@ -204,7 +226,7 @@ module ShopsavvyDataApi
     def remove_product_from_schedule(identifier)
       body = { identifier: identifier }
 
-      response = make_request(:delete, "/products/schedule", body: body)
+      response = make_request(:delete, "products/schedule", body: body)
       APIResponse.new(response)
     end
 
@@ -215,7 +237,7 @@ module ShopsavvyDataApi
     def remove_products_from_schedule(identifiers)
       body = { identifiers: identifiers.join(",") }
 
-      response = make_request(:delete, "/products/schedule", body: body)
+      response = make_request(:delete, "products/schedule", body: body)
       APIResponse.new(response)
     end
 
@@ -227,7 +249,7 @@ module ShopsavvyDataApi
     #   usage = client.get_usage
     #   puts "Credits remaining: #{usage.data.credits_remaining}"
     def get_usage
-      response = make_request(:get, "/usage")
+      response = make_request(:get, "usage")
       APIResponse.new(response, data_class: UsageInfo)
     end
 

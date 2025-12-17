@@ -24,70 +24,138 @@ module ShopsavvyDataApi
     end
   end
 
-  # Product details from ShopSavvy API
-  class ProductDetails
-    attr_reader :product_id, :name, :brand, :category, :image_url, :barcode, 
-                :asin, :model, :mpn, :description, :identifiers
+  # API response metadata containing credit usage info
+  class APIMeta
+    attr_reader :credits_used, :credits_remaining, :rate_limit_remaining
 
     def initialize(data)
-      @product_id = data["product_id"]
-      @name = data["name"]
-      @brand = data["brand"]
-      @category = data["category"]
-      @image_url = data["image_url"]
-      @barcode = data["barcode"]
-      @asin = data["asin"]
-      @model = data["model"]
-      @mpn = data["mpn"]
-      @description = data["description"]
-      @identifiers = data["identifiers"] || {}
+      @credits_used = data["credits_used"].to_i
+      @credits_remaining = data["credits_remaining"].to_i
+      @rate_limit_remaining = data["rate_limit_remaining"]&.to_i
     end
 
     def to_h
       {
-        product_id: product_id,
-        name: name,
+        credits_used: credits_used,
+        credits_remaining: credits_remaining,
+        rate_limit_remaining: rate_limit_remaining
+      }
+    end
+  end
+
+  # Product details from ShopSavvy API
+  class ProductDetails
+    attr_reader :title, :shopsavvy, :brand, :category, :images, :barcode,
+                :amazon, :model, :mpn, :color
+
+    def initialize(data)
+      @title = data["title"]
+      @shopsavvy = data["shopsavvy"]
+      @brand = data["brand"]
+      @category = data["category"]
+      @images = data["images"] || []
+      @barcode = data["barcode"]
+      @amazon = data["amazon"]
+      @model = data["model"]
+      @mpn = data["mpn"]
+      @color = data["color"]
+    end
+
+    # @deprecated Use `title` instead
+    def name
+      title
+    end
+
+    # @deprecated Use `shopsavvy` instead
+    def product_id
+      shopsavvy
+    end
+
+    # @deprecated Use `amazon` instead
+    def asin
+      amazon
+    end
+
+    # @deprecated Use `images[0]` instead
+    def image_url
+      images&.first
+    end
+
+    def to_h
+      {
+        title: title,
+        shopsavvy: shopsavvy,
         brand: brand,
         category: category,
-        image_url: image_url,
+        images: images,
         barcode: barcode,
-        asin: asin,
+        amazon: amazon,
         model: model,
         mpn: mpn,
-        description: description,
-        identifiers: identifiers
+        color: color
       }
+    end
+  end
+
+  # Product with nested offers (returned by offers endpoint)
+  class ProductWithOffers < ProductDetails
+    attr_reader :offers
+
+    def initialize(data)
+      super(data)
+      @offers = (data["offers"] || []).map { |offer| Offer.new(offer) }
+    end
+
+    def to_h
+      super.merge(offers: offers.map(&:to_h))
     end
   end
 
   # Product offer from a retailer
   class Offer
-    attr_reader :offer_id, :retailer, :price, :currency, :availability, 
-                :condition, :url, :shipping, :last_updated
+    attr_reader :id, :retailer, :price, :currency, :availability,
+                :condition, :URL, :seller, :timestamp, :history
 
     def initialize(data)
-      @offer_id = data["offer_id"]
+      @id = data["id"]
       @retailer = data["retailer"]
-      @price = data["price"].to_f
+      @price = data["price"]&.to_f
       @currency = data["currency"] || "USD"
       @availability = data["availability"]
       @condition = data["condition"]
-      @url = data["url"]
-      @shipping = data["shipping"]&.to_f
-      @last_updated = data["last_updated"]
+      @URL = data["URL"]
+      @seller = data["seller"]
+      @timestamp = data["timestamp"]
+      @history = (data["history"] || []).map { |entry| PriceHistoryEntry.new(entry) }
+    end
+
+    # @deprecated Use `id` instead
+    def offer_id
+      id
+    end
+
+    # @deprecated Use `URL` instead
+    def url
+      URL
+    end
+
+    # @deprecated Use `timestamp` instead
+    def last_updated
+      timestamp
     end
 
     def to_h
       {
-        offer_id: offer_id,
+        id: id,
         retailer: retailer,
         price: price,
         currency: currency,
         availability: availability,
         condition: condition,
-        url: url,
-        shipping: shipping,
-        last_updated: last_updated
+        URL: URL,
+        seller: seller,
+        timestamp: timestamp,
+        history: history.map(&:to_h)
       }
     end
 
@@ -170,7 +238,7 @@ module ShopsavvyDataApi
 
   # Scheduled product monitoring information
   class ScheduledProduct
-    attr_reader :product_id, :identifier, :frequency, :retailer, 
+    attr_reader :product_id, :identifier, :frequency, :retailer,
                 :created_at, :last_refreshed
 
     def initialize(data)
@@ -206,35 +274,77 @@ module ShopsavvyDataApi
     end
   end
 
-  # API usage information
-  class UsageInfo
-    attr_reader :credits_used, :credits_remaining, :credits_total,
-                :billing_period_start, :billing_period_end, :plan_name
+  # Current billing period details
+  class UsagePeriod
+    attr_reader :start_date, :end_date, :credits_used, :credits_limit,
+                :credits_remaining, :requests_made
 
     def initialize(data)
+      @start_date = data["start_date"]
+      @end_date = data["end_date"]
       @credits_used = data["credits_used"].to_i
+      @credits_limit = data["credits_limit"].to_i
       @credits_remaining = data["credits_remaining"].to_i
-      @credits_total = data["credits_total"].to_i
-      @billing_period_start = data["billing_period_start"]
-      @billing_period_end = data["billing_period_end"]
-      @plan_name = data["plan_name"]
+      @requests_made = data["requests_made"].to_i
     end
 
     def to_h
       {
+        start_date: start_date,
+        end_date: end_date,
         credits_used: credits_used,
+        credits_limit: credits_limit,
         credits_remaining: credits_remaining,
-        credits_total: credits_total,
-        billing_period_start: billing_period_start,
-        billing_period_end: billing_period_end,
-        plan_name: plan_name
+        requests_made: requests_made
+      }
+    end
+  end
+
+  # API usage information
+  class UsageInfo
+    attr_reader :current_period, :usage_percentage
+
+    def initialize(data)
+      @current_period = UsagePeriod.new(data["current_period"] || {})
+      @usage_percentage = data["usage_percentage"]&.to_f || 0
+    end
+
+    # @deprecated Use `current_period.credits_used` instead
+    def credits_used
+      current_period.credits_used
+    end
+
+    # @deprecated Use `current_period.credits_remaining` instead
+    def credits_remaining
+      current_period.credits_remaining
+    end
+
+    # @deprecated Use `current_period.credits_limit` instead
+    def credits_total
+      current_period.credits_limit
+    end
+
+    # @deprecated Use `current_period.start_date` instead
+    def billing_period_start
+      current_period.start_date
+    end
+
+    # @deprecated Use `current_period.end_date` instead
+    def billing_period_end
+      current_period.end_date
+    end
+
+    def to_h
+      {
+        current_period: current_period.to_h,
+        usage_percentage: usage_percentage
       }
     end
 
     def credits_percentage_used
-      return 0 if credits_total.zero?
+      return 0 if current_period.credits_limit.zero?
 
-      (credits_used.to_f / credits_total * 100).round(2)
+      (current_period.credits_used.to_f / current_period.credits_limit * 100).round(2)
     end
 
     def credits_percentage_remaining
@@ -242,21 +352,49 @@ module ShopsavvyDataApi
     end
   end
 
+  # Pagination info for search results
+  class PaginationInfo
+    attr_reader :total, :limit, :offset, :returned
+
+    def initialize(data)
+      @total = data["total"].to_i
+      @limit = data["limit"].to_i
+      @offset = data["offset"].to_i
+      @returned = data["returned"].to_i
+    end
+
+    def to_h
+      {
+        total: total,
+        limit: limit,
+        offset: offset,
+        returned: returned
+      }
+    end
+  end
+
   # Standard API response wrapper
   class APIResponse
-    attr_reader :success, :data, :message, :credits_used, :credits_remaining
+    attr_reader :success, :data, :message, :meta
 
     def initialize(response_data, data_class: nil)
       @success = response_data["success"]
       @message = response_data["message"]
-      @credits_used = response_data["credits_used"]
-      @credits_remaining = response_data["credits_remaining"]
+      @meta = response_data["meta"] ? APIMeta.new(response_data["meta"]) : nil
 
       @data = if data_class && response_data["data"]
                 parse_data(response_data["data"], data_class)
               else
                 response_data["data"]
               end
+    end
+
+    def credits_used
+      meta&.credits_used || 0
+    end
+
+    def credits_remaining
+      meta&.credits_remaining || 0
     end
 
     def success?
@@ -272,8 +410,7 @@ module ShopsavvyDataApi
         success: success,
         data: data.respond_to?(:to_h) ? data.to_h : data,
         message: message,
-        credits_used: credits_used,
-        credits_remaining: credits_remaining
+        meta: meta&.to_h
       }
     end
 
@@ -284,7 +421,7 @@ module ShopsavvyDataApi
       when Array
         data.map { |item| data_class.new(item) }
       when Hash
-        if data.keys.all? { |key| key.is_a?(String) } && 
+        if data.keys.all? { |key| key.is_a?(String) } &&
            data.values.all? { |value| value.is_a?(Array) }
           # Handle batch responses like {"identifier1" => [offers], "identifier2" => [offers]}
           data.transform_values { |items| items.map { |item| data_class.new(item) } }
@@ -294,6 +431,43 @@ module ShopsavvyDataApi
       else
         data
       end
+    end
+  end
+
+  # Product search result with pagination
+  class ProductSearchResult
+    attr_reader :success, :data, :pagination, :meta
+
+    def initialize(response_data)
+      @success = response_data["success"]
+      @meta = response_data["meta"] ? APIMeta.new(response_data["meta"]) : nil
+      @pagination = response_data["pagination"] ? PaginationInfo.new(response_data["pagination"]) : nil
+      @data = (response_data["data"] || []).map { |item| ProductDetails.new(item) }
+    end
+
+    def credits_used
+      meta&.credits_used || 0
+    end
+
+    def credits_remaining
+      meta&.credits_remaining || 0
+    end
+
+    def success?
+      success == true
+    end
+
+    def failure?
+      !success?
+    end
+
+    def to_h
+      {
+        success: success,
+        data: data.map(&:to_h),
+        pagination: pagination&.to_h,
+        meta: meta&.to_h
+      }
     end
   end
 end
