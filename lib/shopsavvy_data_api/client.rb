@@ -253,6 +253,24 @@ module ShopsavvyDataApi
       APIResponse.new(response, data_class: UsageInfo)
     end
 
+    # Browse current shopping deals
+    # @param sort [String] Sort algorithm: hot, new, top-hour, top-day, top-week
+    # @param limit [Integer] Results per page (1-100)
+    # @param offset [Integer] Pagination offset
+    # @param options [Hash] Additional filters (category, retailer, tag, min_price, max_price, grade)
+    # @return [Hash] Deals response with deals array and pagination
+    def get_deals(sort: "hot", limit: 25, offset: 0, **options)
+      params = { sort: sort, limit: limit, offset: offset }.merge(options).compact
+      make_request(:get, "deals", params: params)
+    end
+
+    # Get TLDR review for a product (pros, cons, scores)
+    # @param identifier [String] Product identifier (barcode, ASIN, URL, model number)
+    # @return [Hash] Review response with review data or null
+    def get_product_review(identifier)
+      make_request(:get, "products/reviews", params: { id: identifier })
+    end
+
     private
 
     def build_connection

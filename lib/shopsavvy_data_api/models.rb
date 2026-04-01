@@ -46,7 +46,9 @@ module ShopsavvyDataApi
   # Product details from ShopSavvy API
   class ProductDetails
     attr_reader :title, :shopsavvy, :brand, :category, :images, :barcode,
-                :amazon, :model, :mpn, :color
+                :amazon, :model, :mpn, :color,
+                :title_short, :slug, :description, :categories, :attributes,
+                :rating, :score, :keywords, :identifiers
 
     def initialize(data)
       @title = data["title"]
@@ -59,6 +61,15 @@ module ShopsavvyDataApi
       @model = data["model"]
       @mpn = data["mpn"]
       @color = data["color"]
+      @title_short = data["title_short"]
+      @slug = data["slug"]
+      @description = data["description"]
+      @categories = data["categories"]
+      @attributes = data["attributes"]
+      @rating = data["rating"]
+      @score = data["score"]
+      @keywords = data["keywords"]
+      @identifiers = data["identifiers"]
     end
 
     # @deprecated Use `title` instead
@@ -468,6 +479,46 @@ module ShopsavvyDataApi
         pagination: pagination&.to_h,
         meta: meta&.to_h
       }
+    end
+  end
+
+  # Deal with expert grading
+  class Deal
+    attr_reader :path, :title, :subtitle, :description, :emoji, :grade,
+                :pricing, :retailer, :product, :url, :image, :votes,
+                :comment_count, :tags, :expires_at, :created_at
+
+    def initialize(data)
+      @path = data["path"]
+      @title = data["title"]
+      @subtitle = data["subtitle"]
+      @description = data["description"]
+      @emoji = data["emoji"]
+      @grade = data["grade"]
+      @pricing = data["pricing"]
+      @retailer = data["retailer"]
+      @product = data["product"]
+      @url = data["url"]
+      @image = data["image"]
+      @votes = data["votes"]
+      @comment_count = data["comment_count"].to_i
+      @tags = data["tags"]
+      @expires_at = data["expires_at"]
+      @created_at = data["created_at"]
+    end
+  end
+
+  # TLDR product review
+  class TLDRReview
+    attr_reader :slug, :headline, :pros, :cons, :bottom_line, :scores
+
+    def initialize(data)
+      @slug = data["slug"]
+      @headline = data["headline"]
+      @pros = data["pros"] || []
+      @cons = data["cons"] || []
+      @bottom_line = data["bottom_line"]
+      @scores = data["scores"]
     end
   end
 end
