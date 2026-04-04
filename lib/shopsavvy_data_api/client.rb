@@ -271,6 +271,20 @@ module ShopsavvyDataApi
       make_request(:get, "products/reviews", params: { id: identifier })
     end
 
+    # Look up multiple products at once (sync for <=20, async for >20)
+    # @param identifiers [Array<String>] Product identifiers (max 100)
+    # @param include [Array<String>] Optional extras: ["offers"], ["reviews"]
+    def batch_lookup(identifiers, include: nil)
+      body = { identifiers: identifiers }
+      body[:include] = include if include
+      make_request(:post, "products/batch", body: body)
+    end
+
+    # Poll for async batch job results
+    def get_batch_status(batch_id)
+      make_request(:get, "batch/#{batch_id}")
+    end
+
     private
 
     def build_connection
