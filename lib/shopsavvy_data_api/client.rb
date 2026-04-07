@@ -285,6 +285,22 @@ module ShopsavvyDataApi
       make_request(:get, "batch/#{batch_id}")
     end
 
+    def create_webhook(url, events:)
+      make_request(:post, "webhooks", body: { url: url, events: events })
+    end
+
+    def list_webhooks
+      make_request(:get, "webhooks")
+    end
+
+    def test_webhook(webhook_id)
+      make_request(:post, "webhooks/#{webhook_id}/test")
+    end
+
+    def delete_webhook(webhook_id)
+      make_request(:delete, "webhooks/#{webhook_id}")
+    end
+
     private
 
     def build_connection
