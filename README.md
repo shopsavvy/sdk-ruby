@@ -20,19 +20,6 @@ product = client.get_product_details('012345678901')
 puts "#{product.data.name} - Best price: $#{client.get_current_offers('012345678901').data.min_by(&:price).price}"
 ```
 
-## 📊 Feature Comparison
-
-| Feature | Free Tier | Pro | Enterprise |
-|---------|-----------|-----|-----------|
-| **API Calls/Month** | 1,000 | 100,000 | Unlimited |
-| **Product Details** | ✅ | ✅ | ✅ |
-| **Real-time Pricing** | ✅ | ✅ | ✅ |
-| **Price History** | 30 days | 1 year | 5+ years |
-| **Bulk Operations** | 10/batch | 100/batch | 1000/batch |
-| **Retailer Coverage** | 50+ | 500+ | 1000+ |
-| **Rate Limiting** | 60/hour | 1000/hour | Custom |
-| **Support** | Community | Email | Phone + Dedicated |
-
 ## 🚀 Installation & Setup
 
 ### Installation
