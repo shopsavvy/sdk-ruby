@@ -297,6 +297,19 @@ module ShopsavvyDataApi
       make_request(:post, "webhooks/#{webhook_id}/test")
     end
 
+    # Update a webhook. All keyword arguments are optional, but at least one
+    # of url:, events:, or is_active: must be provided.
+    def update_webhook(webhook_id, url: nil, events: nil, is_active: nil)
+      if url.nil? && events.nil? && is_active.nil?
+        raise ArgumentError, "update_webhook requires at least one of url:, events:, or is_active:"
+      end
+      body = {}
+      body[:url] = url unless url.nil?
+      body[:events] = events unless events.nil?
+      body[:is_active] = is_active unless is_active.nil?
+      make_request(:put, "webhooks/#{webhook_id}", body: body)
+    end
+
     def delete_webhook(webhook_id)
       make_request(:delete, "webhooks/#{webhook_id}")
     end
