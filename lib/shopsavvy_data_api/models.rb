@@ -44,6 +44,10 @@ module ShopsavvyDataApi
   end
 
   # Product details from ShopSavvy API
+  #
+  # score: expert quality scores on a 0-1 scale (multiply by 10 or 100 for
+  # display) — "overall", "customer", "professional", plus an "aspects" hash
+  # keyed by free-form aspect names from the product's professional reviews.
   class ProductDetails
     attr_reader :title, :shopsavvy, :brand, :category, :images, :barcode,
                 :amazon, :model, :mpn, :color,
@@ -509,6 +513,10 @@ module ShopsavvyDataApi
   end
 
   # TLDR product review
+  #
+  # scores: expert quality scores on a 0-1 scale (multiply by 10 or 100 for
+  # display) — "overall", "customer", "professional", plus an "aspects" hash
+  # keyed by free-form aspect names from the product's professional reviews.
   class TLDRReview
     attr_reader :slug, :headline, :pros, :cons, :bottom_line, :scores
 
