@@ -153,10 +153,14 @@ module ShopsavvyDataApi
     #     puts "#{offer.retailer}: #{offer.price_history.length} price points"
     #   end
     def get_price_history(identifier, start_date, end_date, retailer: nil, format: nil)
+      # Wire params are :start/:end — what GET /products/offers/history reads,
+      # and what the OpenAPI spec and public docs document. The old
+      # :start_date/:end_date names came from the MCP tool's argument
+      # convention (a different interface entirely) and 400'd every call.
       params = {
         ids: identifier,
-        start_date: start_date,
-        end_date: end_date
+        start: start_date,
+        end: end_date
       }
       params[:retailer] = retailer if retailer
       params[:format] = format if format
