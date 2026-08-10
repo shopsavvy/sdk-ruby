@@ -207,11 +207,15 @@ module ShopsavvyDataApi
   # +offer.history+ carried a permanently-nil date next to a correct price and availability
   # (ShopSavvy prospector-audit s28-t2-2 / s28-t2-3).
   class PriceHistoryEntry
-    attr_reader :timestamp, :price, :availability
+    # currency is the ISO 4217 code `price` is denominated in. nil on an archived point with no
+    # recorded currency — never assume a missing value means USD
+    # (ShopSavvy prospector-audit d5-t3-1).
+    attr_reader :timestamp, :price, :currency, :availability
 
     def initialize(data)
       @timestamp = data["timestamp"]
       @price = data["price"].to_f
+      @currency = data["currency"]
       @availability = data["availability"]
     end
 
@@ -219,6 +223,7 @@ module ShopsavvyDataApi
       {
         timestamp: timestamp,
         price: price,
+        currency: currency,
         availability: availability
       }
     end
