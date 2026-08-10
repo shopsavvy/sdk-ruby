@@ -218,9 +218,9 @@ puts "📈 90-Day Price Analysis"
 puts "=" * 50
 
 history.data.each do |offer|
-  next if offer.price_history.empty?
+  next if offer.history.empty?
   
-  prices = offer.price_history.map(&:price)
+  prices = offer.history.map(&:price)
   current_price = offer.price
   
   # Statistical analysis
@@ -254,7 +254,7 @@ history.data.each do |offer|
   puts "  Range: $#{min_price} - $#{max_price}"
   puts "  Savings opportunity: $#{(current_price - min_price).round(2)}"
   puts "  Trend: #{trend}"
-  puts "  Data points: #{offer.price_history.length}"
+  puts "  Data points: #{offer.history.length}"
   puts
 end
 ```
@@ -276,8 +276,8 @@ retailers.each do |retailer|
   next if history.data.empty?
   
   offer = history.data.first
-  if offer.price_history.any?
-    prices = offer.price_history.map(&:price)
+  if offer.history.any?
+    prices = offer.history.map(&:price)
     historical_comparison[retailer] = {
       current: offer.price,
       average: prices.sum.to_f / prices.length,
@@ -828,8 +828,8 @@ class MarketResearcher
     all_prices = []
     
     history_data.each do |offer|
-      next if offer.price_history.empty?
-      all_prices.concat(offer.price_history.map(&:price))
+      next if offer.history.empty?
+      all_prices.concat(offer.history.map(&:price))
     end
     
     return { average_price: 0, volatility: 0 } if all_prices.empty?

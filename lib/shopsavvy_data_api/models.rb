@@ -199,54 +199,56 @@ module ShopsavvyDataApi
     end
   end
 
-  # Historical price data point
+  # Historical price data point.
+  #
+  # The timestamp field is +timestamp+, matching the parent Offer's own +timestamp+ and the
+  # real wire shape ({availability, price, timestamp}). Every SDK in the fleet read it from
+  # a "date" key — one the API has never sent — until 2026-08-10, so every entry in
+  # +offer.history+ carried a permanently-nil date next to a correct price and availability
+  # (ShopSavvy prospector-audit s28-t2-2 / s28-t2-3).
   class PriceHistoryEntry
-    attr_reader :date, :price, :availability
+    attr_reader :timestamp, :price, :availability
 
     def initialize(data)
-      @date = data["date"]
+      @timestamp = data["timestamp"]
       @price = data["price"].to_f
       @availability = data["availability"]
     end
 
     def to_h
       {
-        date: date,
+        timestamp: timestamp,
         price: price,
         availability: availability
       }
     end
   end
 
-  # Offer with historical price data
+  # Offer returned by +get_price_history+, i.e. one carrying its +history+ array.
+  #
+  # This used to declare its OWN +price_history+ reader, populated from a "price_history"
+  # key the API has never sent — so it was always +[]+, and +min_price+/+max_price+/
+  # +average_price+ always returned nil, while the correctly-keyed +history+ inherited from
+  # Offer sat right next to it holding the real data. The SDK's own README and client
+  # docstring both documented the dead one, so the copy-pasteable example reported "0 price
+  # points" forever. Everything now reads +history+.
   class OfferWithHistory < Offer
-    attr_reader :price_history
-
-    def initialize(data)
-      super(data)
-      @price_history = (data["price_history"] || []).map { |entry| PriceHistoryEntry.new(entry) }
-    end
-
-    def to_h
-      super.merge(price_history: price_history.map(&:to_h))
-    end
-
     def min_price
-      return nil if price_history.empty?
+      return nil if history.empty?
 
-      price_history.map(&:price).min
+      history.map(&:price).min
     end
 
     def max_price
-      return nil if price_history.empty?
+      return nil if history.empty?
 
-      price_history.map(&:price).max
+      history.map(&:price).max
     end
 
     def average_price
-      return nil if price_history.empty?
+      return nil if history.empty?
 
-      prices = price_history.map(&:price)
+      prices = history.map(&:price)
       prices.sum.to_f / prices.length
     end
   end

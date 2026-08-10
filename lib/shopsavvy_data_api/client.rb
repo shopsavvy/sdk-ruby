@@ -150,7 +150,7 @@ module ShopsavvyDataApi
     # @example
     #   history = client.get_price_history("012345678901", "2024-01-01", "2024-01-31")
     #   history.data.each do |offer|
-    #     puts "#{offer.retailer}: #{offer.price_history.length} price points"
+    #     puts "#{offer.retailer}: #{offer.history.length} price points"
     #   end
     def get_price_history(identifier, start_date, end_date, retailer: nil, format: nil)
       # Wire params are :start/:end — what GET /products/offers/history reads,
