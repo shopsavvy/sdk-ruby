@@ -178,20 +178,13 @@ module ShopsavvyDataApi
     # @param identifier [String] Product identifier
     # @param frequency [String] How often to refresh ('hourly', 'daily', 'weekly')
     # @param retailer [String, nil] Optional retailer to monitor
-    # @return [APIResponse<Hash>] Scheduling confirmation
+    # @return [APIResponse<Array<Hash>>] The scheduled products (product fields plus "schedule")
     #
     # @example
     #   result = client.schedule_product_monitoring("012345678901", "daily")
-    #   puts "Scheduled: #{result.data['scheduled']}"
+    #   result.data.each { |product| puts "#{product['title']}: #{product['schedule']}" }
     def schedule_product_monitoring(identifier, frequency, retailer: nil)
-      body = {
-        identifier: identifier,
-        frequency: frequency
-      }
-      body[:retailer] = retailer if retailer
-
-      response = make_request(:post, "products/schedule", body: body)
-      APIResponse.new(response)
+      schedule_products([identifier], frequency, retailer: retailer)
     end
 
     # Schedule monitoring for multiple products
@@ -199,16 +192,9 @@ module ShopsavvyDataApi
     # @param identifiers [Array<String>] Array of product identifiers
     # @param frequency [String] How often to refresh ('hourly', 'daily', 'weekly')
     # @param retailer [String, nil] Optional retailer to monitor
-    # @return [APIResponse<Array<Hash>>] Scheduling confirmation for all products
+    # @return [APIResponse<Array<Hash>>] The scheduled products (product fields plus "schedule")
     def schedule_product_monitoring_batch(identifiers, frequency, retailer: nil)
-      body = {
-        identifiers: identifiers.join(","),
-        frequency: frequency
-      }
-      body[:retailer] = retailer if retailer
-
-      response = make_request(:post, "products/schedule", body: body)
-      APIResponse.new(response)
+      schedule_products(identifiers, frequency, retailer: retailer)
     end
 
     # Get all scheduled products
@@ -226,26 +212,22 @@ module ShopsavvyDataApi
     # Remove product from monitoring schedule
     #
     # @param identifier [String] Product identifier to remove
-    # @return [APIResponse<Hash>] Removal confirmation
+    # @return [APIResponse] Removal confirmation (+success?+ and +message+)
     #
     # @example
     #   result = client.remove_product_from_schedule("012345678901")
-    #   puts "Removed: #{result.data['removed']}"
+    #   puts result.message if result.success?
     def remove_product_from_schedule(identifier)
-      body = { identifier: identifier }
-
-      response = make_request(:delete, "products/schedule", body: body)
-      APIResponse.new(response)
+      remove_products_from_schedule([identifier])
     end
 
     # Remove multiple products from monitoring schedule
     #
     # @param identifiers [Array<String>] Array of product identifiers to remove
-    # @return [APIResponse<Array<Hash>>] Removal confirmation for all products
+    # @return [APIResponse] Removal confirmation (+success?+ and +message+)
     def remove_products_from_schedule(identifiers)
-      body = { identifiers: identifiers.join(",") }
-
-      response = make_request(:delete, "products/schedule", body: body)
+      # DELETE /products/scheduled reads only the `ids` query parameter.
+      response = make_request(:delete, "products/scheduled", params: { ids: identifiers.join(",") })
       APIResponse.new(response)
     end
 
@@ -324,6 +306,18 @@ module ShopsavvyDataApi
 
     private
 
+    # PUT /products/scheduled reads ONLY query parameters (ids, schedule, retailer). This
+    # used to POST a JSON body of {identifier(s), frequency, retailer} to /products/schedule;
+    # the server ignores request bodies on this route, so every call failed with
+    # "An 'ids' query parameter is required" (and the frequency and retailer never arrived).
+    def schedule_products(identifiers, frequency, retailer: nil)
+      params = { ids: identifiers.join(","), schedule: frequency }
+      params[:retailer] = retailer if retailer
+
+      response = make_request(:put, "products/scheduled", params: params)
+      APIResponse.new(response)
+    end
+
     def build_connection
       Faraday.new(
         url: config.base_url,
@@ -342,7 +336,11 @@ module ShopsavvyDataApi
     end
 
     def make_request(method, path, params: nil, body: nil)
-      response = @connection.public_send(method, path, params) do |req|
+      # run_request so that `params` is ALWAYS the query string. Faraday's verb helpers
+      # disagree about their second positional argument: get/delete treat it as query
+      # params, but post/put/patch treat it as the request BODY.
+      response = @connection.run_request(method, path, nil, nil) do |req|
+        req.params.update(params) if params
         req.body = body.to_json if body
       end
 
