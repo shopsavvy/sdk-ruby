@@ -15,6 +15,16 @@ All notable changes to the `shopsavvy-sdk` gem are recorded here.
 - `Offer#url` and `Offer#to_h` raised `NameError` (a bare `URL` resolves as a constant).
 - `PriceHistoryEntry#price` keeps a missing price as `nil` instead of `0.0`;
   `OfferWithHistory#min_price` / `#max_price` / `#average_price` ignore `nil` prices.
+- Scheduling actually reaches the API. `schedule_product_monitoring`,
+  `schedule_product_monitoring_batch`, `remove_product_from_schedule` and
+  `remove_products_from_schedule` sent a JSON body (`identifier(s)`, `frequency`, `retailer`)
+  via POST/DELETE to `/products/schedule`; the server reads only the query string, so every
+  call failed with a missing-`ids` error. They now send
+  `PUT /products/scheduled?ids=a,b&schedule=daily[&retailer=amazon.com]` and
+  `DELETE /products/scheduled?ids=a,b` with no body. The response `data` is the list of
+  scheduled products (product fields plus `schedule`); unschedule returns `message`.
+- Internal requests always put `params` in the query string (Faraday's `put`/`post` helpers
+  treat their second argument as the body).
 - The published gem no longer includes the previously-tracked `vendor/bundle` directory.
 
 ### Added

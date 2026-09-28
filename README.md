@@ -311,14 +311,15 @@ end
 #### Schedule Monitoring
 ```ruby
 # Monitor daily across all retailers
+# Sends PUT /products/scheduled?ids=012345678901&schedule=daily
 result = client.schedule_product_monitoring("012345678901", "daily")
-puts "Scheduled: #{result.data['scheduled']}"
+result.data.each { |product| puts "#{product['title']}: #{product['schedule']}" }
 
-# Monitor hourly at Amazon only
+# Monitor hourly at Amazon only (retailer is a domain)
 client.schedule_product_monitoring(
-  "012345678901", 
-  "hourly", 
-  retailer: "amazon"
+  "012345678901",
+  "hourly",
+  retailer: "amazon.com"
 )
 
 # Schedule multiple products
@@ -341,8 +342,9 @@ scheduled.data.each do |product|
   puts "  Last refreshed: #{product.last_refreshed}" if product.last_refreshed
 end
 
-# Remove from schedule
-client.remove_product_from_schedule("012345678901")
+# Remove from schedule (DELETE /products/scheduled?ids=012345678901)
+result = client.remove_product_from_schedule("012345678901")
+puts result.message
 
 # Remove multiple products
 client.remove_products_from_schedule(["012345678901", "B08N5WRWNW"])
