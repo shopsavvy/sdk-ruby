@@ -151,7 +151,7 @@ module ShopsavvyDataApi
 
     # @deprecated Use `URL` instead
     def url
-      URL
+      @URL
     end
 
     # @deprecated Use `timestamp` instead
@@ -167,7 +167,7 @@ module ShopsavvyDataApi
         currency: currency,
         availability: availability,
         condition: condition,
-        URL: URL,
+        URL: @URL,
         seller: seller,
         timestamp: timestamp,
         history: history.map(&:to_h)
@@ -214,7 +214,7 @@ module ShopsavvyDataApi
 
     def initialize(data)
       @timestamp = data["timestamp"]
-      @price = data["price"].to_f
+      @price = data["price"]&.to_f
       @currency = data["currency"]
       @availability = data["availability"]
     end
@@ -241,20 +241,41 @@ module ShopsavvyDataApi
     def min_price
       return nil if history.empty?
 
-      history.map(&:price).min
+      history.map(&:price).compact.min
     end
 
     def max_price
       return nil if history.empty?
 
-      history.map(&:price).max
+      history.map(&:price).compact.max
     end
 
     def average_price
-      return nil if history.empty?
+      prices = history.map(&:price).compact
+      return nil if prices.empty?
 
-      prices = history.map(&:price)
       prices.sum.to_f / prices.length
+    end
+  end
+
+  # One product in a +get_price_history+ response.
+  #
+  # GET /products/offers/history returns the same product-with-offers shape as the offers
+  # endpoint — one entry per requested product, carrying every product field — with each
+  # offer additionally carrying its +history+ array. +get_price_history+ used to parse each
+  # PRODUCT as if it were an offer (+OfferWithHistory+), so +id+/+retailer+/+price+ read keys
+  # a product never has and every offer and every history point in the response was
+  # silently dropped.
+  class ProductWithOfferHistory < ProductDetails
+    attr_reader :offers
+
+    def initialize(data)
+      super(data)
+      @offers = (data["offers"] || []).map { |offer| OfferWithHistory.new(offer) }
+    end
+
+    def to_h
+      super.merge(offers: offers.map(&:to_h))
     end
   end
 

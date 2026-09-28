@@ -145,12 +145,16 @@ module ShopsavvyDataApi
     # @param end_date [String] End date (YYYY-MM-DD format)
     # @param retailer [String, nil] Optional retailer to filter by
     # @param format [String, nil] Response format ('json' or 'csv')
-    # @return [APIResponse<Array<OfferWithHistory>>] Offers with price history
+    # @return [APIResponse<Array<ProductWithOfferHistory>>] One entry per product found, each
+    #   carrying its offers, each offer carrying its +history+ points (newest first)
     #
     # @example
-    #   history = client.get_price_history("012345678901", "2024-01-01", "2024-01-31")
-    #   history.data.each do |offer|
-    #     puts "#{offer.retailer}: #{offer.history.length} price points"
+    #   result = client.get_price_history("012345678901", "2024-01-01", "2024-01-31")
+    #   result.data.each do |product|
+    #     puts product.title
+    #     product.offers.each do |offer|
+    #       puts "  #{offer.retailer}: #{offer.history.length} price points, low $#{offer.min_price}"
+    #     end
     #   end
     def get_price_history(identifier, start_date, end_date, retailer: nil, format: nil)
       # Wire params are :start/:end — what GET /products/offers/history reads,
@@ -166,7 +170,7 @@ module ShopsavvyDataApi
       params[:format] = format if format
 
       response = make_request(:get, "products/offers/history", params: params)
-      APIResponse.new(response, data_class: OfferWithHistory)
+      APIResponse.new(response, data_class: ProductWithOfferHistory)
     end
 
     # Schedule product monitoring
