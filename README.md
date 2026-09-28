@@ -159,7 +159,7 @@ target_offers = client.get_current_offers("012345678901", retailer: "target")
 bestbuy_offers = client.get_current_offers("012345678901", retailer: "bestbuy")
 
 # Compare specific retailers
-retailers = %w[amazon walmart target bestbuy]
+retailers = %w[amazon.com walmart.com target.com bestbuy.com]
 retailer_prices = {}
 
 retailers.each do |retailer|
@@ -208,6 +208,8 @@ require 'date'
 end_date = Date.today
 start_date = end_date - 90
 
+# Returns one entry per product found. Each product carries its offers, and each
+# offer carries its `history` points, NEWEST FIRST: { timestamp, price, currency, availability }.
 history = client.get_price_history(
   "012345678901",
   start_date.strftime("%Y-%m-%d"),
@@ -217,10 +219,13 @@ history = client.get_price_history(
 puts "📈 90-Day Price Analysis"
 puts "=" * 50
 
-history.data.each do |offer|
+product = history.data.first
+puts product.title
+
+product.offers.each do |offer|
   next if offer.history.empty?
-  
-  prices = offer.history.map(&:price)
+
+  prices = offer.history.map(&:price) # newest first
   current_price = offer.price
   
   # Statistical analysis
@@ -228,9 +233,9 @@ history.data.each do |offer|
   min_price = prices.min
   max_price = prices.max
   
-  # Price trend calculation
-  recent_prices = prices.last(7)  # Last week
-  older_prices = prices.first([prices.length - 7, 1].max)
+  # Price trend calculation (history is newest first)
+  recent_prices = prices.first(7)
+  older_prices = prices.drop(7)
   
   trend = if recent_prices.any? && older_prices.any?
             recent_avg = recent_prices.sum.to_f / recent_prices.length
@@ -273,9 +278,10 @@ retailers.each do |retailer|
     retailer: retailer
   )
   
-  next if history.data.empty?
-  
-  offer = history.data.first
+  product = history.data.first
+  next if product.nil? || product.offers.empty?
+
+  offer = product.offers.first
   if offer.history.any?
     prices = offer.history.map(&:price)
     historical_comparison[retailer] = {
@@ -575,7 +581,7 @@ class PriceAPI < Sinatra::Base
         success: true,
         product_id: identifier,
         period: "#{days} days",
-        data: history.data
+        data: history.data.map(&:to_h) # products, each with offers + history
       }.to_json
     rescue ShopsavvyDataApi::Error => e
       status 400
@@ -827,9 +833,10 @@ class MarketResearcher
     
     all_prices = []
     
-    history_data.each do |offer|
-      next if offer.history.empty?
-      all_prices.concat(offer.history.map(&:price))
+    history_data.each do |product|
+      product.offers.each do |offer|
+        all_prices.concat(offer.history.map(&:price))
+      end
     end
     
     return { average_price: 0, volatility: 0 } if all_prices.empty?
