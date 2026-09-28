@@ -174,16 +174,32 @@ module ShopsavvyDataApi
       }
     end
 
+    # Offer availability is one of the API's canonical tokens: "in", "out", "limited",
+    # "pre-order", "coming-soon" or "discontinued" (nil when unknown — the API omits it).
+    # These predicates used to compare against "in_stock" / "out_of_stock" /
+    # "limited_stock", which the API never sends, so they were always false.
     def in_stock?
-      availability == "in_stock"
+      availability == "in"
     end
 
     def out_of_stock?
-      availability == "out_of_stock"
+      availability == "out"
     end
 
     def limited_stock?
-      availability == "limited_stock"
+      availability == "limited"
+    end
+
+    def pre_order?
+      availability == "pre-order"
+    end
+
+    def coming_soon?
+      availability == "coming-soon"
+    end
+
+    def discontinued?
+      availability == "discontinued"
     end
 
     def new_condition?
@@ -279,41 +295,48 @@ module ShopsavvyDataApi
     end
   end
 
-  # Scheduled product monitoring information
-  class ScheduledProduct
-    attr_reader :product_id, :identifier, :frequency, :retailer,
-                :created_at, :last_refreshed
+  # One product in a scheduling response: every product field (it IS a ProductDetails)
+  # plus the refresh +schedule+ and, when one is set, the +retailer+ it is limited to.
+  #
+  # Returned by both PUT /products/scheduled (+schedule_product_monitoring+ /
+  # +schedule_product_monitoring_batch+) and GET /products/scheduled
+  # (+get_scheduled_products+). The server builds each entry as
+  # +{ ...publicProduct, schedule, retailer? }+.
+  #
+  # +schedule+ is "hourly", "daily" or "weekly". On the list endpoint it is +nil+ when the
+  # stored refresh interval has no Data API label (e.g. a 4h/12h interval set from
+  # ShopSavvy Business). +retailer+ is +nil+ when the product is watched at every retailer.
+  #
+  # This class used to read +product_id+, +identifier+, +frequency+, +created_at+ and
+  # +last_refreshed+ — keys the API has never sent — so every field was nil.
+  class ScheduledProduct < ProductDetails
+    attr_reader :schedule, :retailer
 
     def initialize(data)
-      @product_id = data["product_id"]
-      @identifier = data["identifier"]
-      @frequency = data["frequency"]
+      super(data)
+      @schedule = data["schedule"]
       @retailer = data["retailer"]
-      @created_at = data["created_at"]
-      @last_refreshed = data["last_refreshed"]
+    end
+
+    # @deprecated Use `schedule` instead
+    def frequency
+      schedule
     end
 
     def to_h
-      {
-        product_id: product_id,
-        identifier: identifier,
-        frequency: frequency,
-        retailer: retailer,
-        created_at: created_at,
-        last_refreshed: last_refreshed
-      }
+      super.merge(schedule: schedule, retailer: retailer)
     end
 
     def hourly?
-      frequency == "hourly"
+      schedule == "hourly"
     end
 
     def daily?
-      frequency == "daily"
+      schedule == "daily"
     end
 
     def weekly?
-      frequency == "weekly"
+      schedule == "weekly"
     end
   end
 

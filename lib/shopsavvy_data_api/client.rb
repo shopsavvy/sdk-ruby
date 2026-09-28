@@ -178,11 +178,12 @@ module ShopsavvyDataApi
     # @param identifier [String] Product identifier
     # @param frequency [String] How often to refresh ('hourly', 'daily', 'weekly')
     # @param retailer [String, nil] Optional retailer to monitor
-    # @return [APIResponse<Array<Hash>>] The scheduled products (product fields plus "schedule")
+    # @return [APIResponse<Array<ScheduledProduct>>] The scheduled products (every product
+    #   field plus +schedule+, and +retailer+ when one was given)
     #
     # @example
     #   result = client.schedule_product_monitoring("012345678901", "daily")
-    #   result.data.each { |product| puts "#{product['title']}: #{product['schedule']}" }
+    #   result.data.each { |product| puts "#{product.title}: #{product.schedule}" }
     def schedule_product_monitoring(identifier, frequency, retailer: nil)
       schedule_products([identifier], frequency, retailer: retailer)
     end
@@ -192,18 +193,21 @@ module ShopsavvyDataApi
     # @param identifiers [Array<String>] Array of product identifiers
     # @param frequency [String] How often to refresh ('hourly', 'daily', 'weekly')
     # @param retailer [String, nil] Optional retailer to monitor
-    # @return [APIResponse<Array<Hash>>] The scheduled products (product fields plus "schedule")
+    # @return [APIResponse<Array<ScheduledProduct>>] The scheduled products (every product
+    #   field plus +schedule+, and +retailer+ when one was given)
     def schedule_product_monitoring_batch(identifiers, frequency, retailer: nil)
       schedule_products(identifiers, frequency, retailer: retailer)
     end
 
     # Get all scheduled products
     #
-    # @return [APIResponse<Array<ScheduledProduct>>] List of scheduled products
+    # @return [APIResponse<Array<ScheduledProduct>>] Every scheduled product (product fields
+    #   plus +schedule+, which is nil for an interval with no Data API label, and +retailer+
+    #   when the schedule is limited to one retailer)
     #
     # @example
     #   scheduled = client.get_scheduled_products
-    #   puts "Monitoring #{scheduled.data.length} products"
+    #   scheduled.data.each { |product| puts "#{product.title}: #{product.schedule}" }
     def get_scheduled_products
       response = make_request(:get, "products/scheduled")
       APIResponse.new(response, data_class: ScheduledProduct)
@@ -212,7 +216,8 @@ module ShopsavvyDataApi
     # Remove product from monitoring schedule
     #
     # @param identifier [String] Product identifier to remove
-    # @return [APIResponse] Removal confirmation (+success?+ and +message+)
+    # @return [APIResponse] Removal confirmation: +success?+, +message+ and +meta+. The
+    #   server sends no +data+, so +data+ is always nil.
     #
     # @example
     #   result = client.remove_product_from_schedule("012345678901")
@@ -224,7 +229,7 @@ module ShopsavvyDataApi
     # Remove multiple products from monitoring schedule
     #
     # @param identifiers [Array<String>] Array of product identifiers to remove
-    # @return [APIResponse] Removal confirmation (+success?+ and +message+)
+    # @return [APIResponse] Removal confirmation: +success?+, +message+ and +meta+ (+data+ is nil)
     def remove_products_from_schedule(identifiers)
       # DELETE /products/scheduled reads only the `ids` query parameter.
       response = make_request(:delete, "products/scheduled", params: { ids: identifiers.join(",") })
@@ -315,7 +320,7 @@ module ShopsavvyDataApi
       params[:retailer] = retailer if retailer
 
       response = make_request(:put, "products/scheduled", params: params)
-      APIResponse.new(response)
+      APIResponse.new(response, data_class: ScheduledProduct)
     end
 
     def build_connection

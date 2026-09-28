@@ -143,7 +143,7 @@ puts "📊 Average price: $#{offers.data.map(&:price).sum / offers.data.length}"
 puts "💡 Potential savings: $#{most_expensive.price - cheapest.price}"
 
 # Filter by availability and condition
-in_stock_offers = offers.data.select { |offer| offer.availability == 'in_stock' }
+in_stock_offers = offers.data.select(&:in_stock?) # availability == "in"
 new_condition_offers = offers.data.select { |offer| offer.condition == 'new' }
 
 puts "✅ In-stock offers: #{in_stock_offers.length}"
@@ -193,7 +193,7 @@ batch_offers.data.each do |identifier, offers|
   puts "#{identifier}:"
   puts "  Best price: #{best_offer.retailer} - $#{best_offer.price}"
   puts "  Total offers: #{offers.length}"
-  puts "  In stock: #{offers.count { |o| o.availability == 'in_stock' }}"
+  puts "  In stock: #{offers.count(&:in_stock?)}"
   puts
 end
 ```
@@ -313,14 +313,17 @@ end
 # Monitor daily across all retailers
 # Sends PUT /products/scheduled?ids=012345678901&schedule=daily
 result = client.schedule_product_monitoring("012345678901", "daily")
-result.data.each { |product| puts "#{product['title']}: #{product['schedule']}" }
+# result.data is an Array<ScheduledProduct>: every product field plus `schedule`
+result.data.each { |product| puts "#{product.title} (#{product.shopsavvy}): #{product.schedule}" }
 
 # Monitor hourly at Amazon only (retailer is a domain)
-client.schedule_product_monitoring(
+amazon_only = client.schedule_product_monitoring(
   "012345678901",
   "hourly",
   retailer: "amazon.com"
 )
+amazon_only.data.first.retailer # => "amazon.com"
+puts "Credits used: #{amazon_only.credits_used}"
 
 # Schedule multiple products
 batch_result = client.schedule_product_monitoring_batch([
@@ -337,14 +340,14 @@ puts "Monitoring #{scheduled.data.length} products"
 
 scheduled.data.each do |product|
   retailer_info = product.retailer || "all retailers"
-  puts "#{product.identifier}: #{product.frequency} at #{retailer_info}"
-  puts "  Created: #{product.created_at}"
-  puts "  Last refreshed: #{product.last_refreshed}" if product.last_refreshed
+  # schedule is nil when the stored interval has no Data API label (e.g. a 4h interval)
+  puts "#{product.title} (#{product.shopsavvy}): #{product.schedule || 'custom interval'} at #{retailer_info}"
 end
 
 # Remove from schedule (DELETE /products/scheduled?ids=012345678901)
+# The response carries success, message and meta only (no data).
 result = client.remove_product_from_schedule("012345678901")
-puts result.message
+puts result.message if result.success?
 
 # Remove multiple products
 client.remove_products_from_schedule(["012345678901", "B08N5WRWNW"])
@@ -708,7 +711,7 @@ class CompetitiveAnalyzer
   def calculate_availability_score(offers)
     return 0 if offers.empty?
     
-    in_stock_count = offers.count { |offer| offer.availability == 'in_stock' }
+    in_stock_count = offers.count(&:in_stock?)
     (in_stock_count.to_f / offers.length * 100).round(1)
   end
 end

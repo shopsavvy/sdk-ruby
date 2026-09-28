@@ -21,8 +21,21 @@ All notable changes to the `shopsavvy-sdk` gem are recorded here.
   via POST/DELETE to `/products/schedule`; the server reads only the query string, so every
   call failed with a missing-`ids` error. They now send
   `PUT /products/scheduled?ids=a,b&schedule=daily[&retailer=amazon.com]` and
-  `DELETE /products/scheduled?ids=a,b` with no body. The response `data` is the list of
-  scheduled products (product fields plus `schedule`); unschedule returns `message`.
+  `DELETE /products/scheduled?ids=a,b` with no body.
+- Scheduling responses are typed to what the server sends. `schedule_product_monitoring`,
+  `schedule_product_monitoring_batch` and `get_scheduled_products` return
+  `APIResponse<Array<ScheduledProduct>>`, and `ScheduledProduct` is now a `ProductDetails`
+  (every product field) plus `schedule` and `retailer`. It previously read `product_id`,
+  `identifier`, `frequency`, `created_at` and `last_refreshed` — keys the API never sends —
+  so every field was nil; `frequency` remains as a deprecated alias of `schedule`. On the
+  list, `schedule` is nil for an interval with no Data API label and `retailer` is nil when
+  the product is watched at every retailer. `remove_product(s)_from_schedule` return
+  `success?`, `message` and `meta`; the server sends no `data`.
+- `Offer#in_stock?`, `#out_of_stock?` and `#limited_stock?` compared `availability` against
+  `"in_stock"` / `"out_of_stock"` / `"limited_stock"`, which the API never sends, so they
+  were always false. They now match the API's tokens (`"in"`, `"out"`, `"limited"`), and
+  `#pre_order?`, `#coming_soon?` and `#discontinued?` were added. README availability
+  examples use the predicates.
 - Internal requests always put `params` in the query string (Faraday's `put`/`post` helpers
   treat their second argument as the body).
 - The published gem no longer includes the previously-tracked `vendor/bundle` directory.

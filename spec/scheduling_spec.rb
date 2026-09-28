@@ -36,7 +36,7 @@ RSpec.describe ShopsavvyDataApi::Client, "scheduling" do
 
     expect(stub).to have_been_requested.once
     expect(result).to be_success
-    expect(result.data.map { |p| p["schedule"] }).to eq(%w[daily daily])
+    expect(result.data.map(&:schedule)).to eq(%w[daily daily])
     expect(result.credits_used).to eq(2)
   end
 
