@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ["business@shopsavvy.com"]
 
   spec.summary = "Official Ruby SDK for ShopSavvy Data API"
-  spec.description = "Access product data, pricing, and price history across thousands of retailers and millions of products with the ShopSavvy Data API."
+  spec.description = "Access product data, pricing, and price history across tens of thousands of retailers and 30M+ products with the ShopSavvy Data API."
   spec.homepage = "https://shopsavvy.com/data"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 2.6.0"

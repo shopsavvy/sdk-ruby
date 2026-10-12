@@ -8,7 +8,7 @@ module ShopsavvyDataApi
   # Official Ruby client for ShopSavvy Data API
   #
   # Provides access to product data, pricing information, and price history
-  # across thousands of retailers and millions of products.
+  # across tens of thousands of retailers and 30M+ products.
   #
   # @example Basic usage
   #   client = ShopsavvyDataApi::Client.new(api_key: "ss_live_your_api_key_here")

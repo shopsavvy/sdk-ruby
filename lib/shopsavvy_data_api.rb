@@ -9,7 +9,7 @@ require_relative "shopsavvy_data_api/client"
 #
 # This gem provides a convenient interface to interact with the ShopSavvy Data API,
 # allowing you to access product data, pricing information, and price history
-# across thousands of retailers and millions of products.
+# across tens of thousands of retailers and 30M+ products.
 #
 # @example Basic usage
 #   client = ShopsavvyDataApi.new(api_key: "ss_live_your_api_key_here")
