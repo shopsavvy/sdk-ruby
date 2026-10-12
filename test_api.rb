@@ -5,10 +5,14 @@
 
 require_relative "lib/shopsavvy_data_api"
 
-API_KEY = "ss_live_9c4ea2e04c5bf64048058359e3eb84a7"
+# Never hardcode a key here: this repo is public.
+# Usage: SHOPSAVVY_API_KEY=ss_live_... [SHOPSAVVY_BASE_URL=http://localhost:4001/v1] ruby test_api.rb
+API_KEY = ENV["SHOPSAVVY_API_KEY"]
+abort "Set SHOPSAVVY_API_KEY to run the live smoke test (get a key at https://shopsavvy.com/data)." if API_KEY.nil? || API_KEY.empty?
+BASE_URL = ENV["SHOPSAVVY_BASE_URL"]
 
 puts "Creating ShopSavvy client..."
-client = ShopsavvyDataApi::Client.new(api_key: API_KEY)
+client = ShopsavvyDataApi::Client.new(api_key: API_KEY, base_url: BASE_URL)
 puts "Client created with version #{ShopsavvyDataApi::VERSION}"
 
 puts "\n=== Test 1: Get Usage ==="
