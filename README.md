@@ -927,6 +927,9 @@ end
 ## 📚 Additional Resources
 
 - **[ShopSavvy Data API Documentation](https://shopsavvy.com/data/documentation)** - Complete API reference
+- **[Postman Collection](https://shopsavvy.com/templates/data-api-postman-collection)** - Every endpoint, ready to import
+- **[API Evaluation Checklist](https://shopsavvy.com/templates/product-data-api-evaluation-checklist)** - Free template for comparing product data APIs
+- **[Free UPC Lookup](https://shopsavvy.com/tools/upc-lookup)** - Look up any barcode in the browser, no code
 - **[API Dashboard](https://shopsavvy.com/data/dashboard)** - Manage your API keys and usage
 - **[GitHub Repository](https://github.com/shopsavvy/sdk-ruby)** - Source code and issues
 - **[RubyGems Page](https://rubygems.org/gems/shopsavvy-sdk)** - Gem releases and stats
