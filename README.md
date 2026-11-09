@@ -364,6 +364,17 @@ puts "Usage: #{usage.data.credits_percentage_used}%"
 puts "Billing period: #{usage.data.billing_period_start} to #{usage.data.billing_period_end}"
 ```
 
+### In-Store Prices (user-collected)
+
+Each product from the current-offers call also carries `in_store_prices`: shelf prices physical stores charged, read from receipts ShopSavvy app users scanned. Every entry is labeled `source: "user-collected"` and has the retailer, the store's address and coordinates, the price and the receipt date (`observed_on`). It is a price on that day, not current stock, and says nothing about the shopper. Empty when none are on file.
+
+```ruby
+result = client.get_current_offers("011110838360")
+result.data.first.in_store_prices.each do |in_store|
+  puts "#{in_store.retailer} (#{in_store.address}): $#{in_store.price} on #{in_store.observed_on}"
+end
+```
+
 ## 🔧 Advanced Usage
 
 ### Error Handling

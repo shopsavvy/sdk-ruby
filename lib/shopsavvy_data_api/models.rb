@@ -114,15 +114,50 @@ module ShopsavvyDataApi
 
   # Product with nested offers (returned by offers endpoint)
   class ProductWithOffers < ProductDetails
-    attr_reader :offers
+    attr_reader :offers, :in_store_prices
 
     def initialize(data)
       super(data)
       @offers = (data["offers"] || []).map { |offer| Offer.new(offer) }
+      # User-collected shelf prices read from shoppers' scanned receipts (empty when none).
+      @in_store_prices = (data["in_store_prices"] || []).map { |in_store| InStorePrice.new(in_store) }
     end
 
     def to_h
-      super.merge(offers: offers.map(&:to_h))
+      super.merge(offers: offers.map(&:to_h), in_store_prices: in_store_prices.map(&:to_h))
+    end
+  end
+
+  # A shelf price a physical store charged on a given day, read from a shopper's scanned
+  # receipt. `source` is always "user-collected". It says what the store sold the product for
+  # that day, not that it is in stock now; nothing about the shopper is included.
+  class InStorePrice
+    attr_reader :source, :retailer, :address, :latitude, :longitude, :price, :currency,
+                :observed_on, :timestamp
+
+    def initialize(data)
+      store = data["store"] || {}
+      @source = data["source"]
+      @retailer = data["retailer"]
+      @address = store["address"]
+      @latitude = store["latitude"]&.to_f
+      @longitude = store["longitude"]&.to_f
+      @price = data["price"]&.to_f
+      @currency = data["currency"]
+      @observed_on = data["observed_on"]
+      @timestamp = data["timestamp"]
+    end
+
+    def to_h
+      {
+        source: source,
+        retailer: retailer,
+        store: { address: address, latitude: latitude, longitude: longitude },
+        price: price,
+        currency: currency,
+        observed_on: observed_on,
+        timestamp: timestamp
+      }
     end
   end
 
