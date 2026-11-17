@@ -2,6 +2,23 @@
 
 All notable changes to the `shopsavvy-sdk` gem are recorded here.
 
+## 1.6.0 - 2026-11-17
+
+### Added
+- Every API error now carries `code`, `action`, `docs_url`, `request_id`, `status_code` and `retry_after_seconds` (parsed from the `Retry-After` header), read from the API's `error_detail` object.
+- `CreditsExhaustedError` for `ERR_CREDITS_EXHAUSTED`.
+- README section "Errors, rate limits and credits".
+
+### Changed
+- Credits exhausted (`ERR_CREDITS_EXHAUSTED`, HTTP 429) is no longer raised as `RateLimitError`. Code that rescued every 429 as `RateLimitError` and retried should retry only `RateLimitError` and stop on `CreditsExhaustedError`. A 429 without a code (older server) is still a `RateLimitError`.
+- Error messages are the API's own `error` text when the response has one (the old fixed strings remain only when it does not). HTTP 400 now raises `ValidationError` (422 still does).
+- README quick start reads the key from `SHOPSAVVY_API_KEY` and prints the cheapest offer for a real barcode.
+
+## 1.5.0 - 2026-11-09
+
+### Added
+- `in_store_prices` (user-collected receipt prices) on current offers and batch results.
+
 ## 1.4.0
 
 ### Changed (breaking for `get_price_history` callers)
