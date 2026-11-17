@@ -9,15 +9,49 @@ Official Ruby SDK for the [ShopSavvy Data API](https://shopsavvy.com/data). Acce
 
 ## ⚡ 30-Second Quick Start
 
-```ruby
-# Install
+```bash
 gem install shopsavvy-sdk
+export SHOPSAVVY_API_KEY=ss_live_...   # get a key at shopsavvy.com/data/api-keys after starting a plan
+```
 
-# Use
+```ruby
 require 'shopsavvy_data_api'
-client = ShopsavvyDataApi.new(api_key: 'ss_live_your_api_key_here')
-product = client.get_product_details('012345678901')
-puts "#{product.data.name} - Best price: $#{client.get_current_offers('012345678901').data.min_by(&:price).price}"
+
+client = ShopsavvyDataApi.new(api_key: ENV.fetch('SHOPSAVVY_API_KEY'))
+
+# Keurig K-Mini, looked up by barcode
+product = client.get_current_offers('611247373064').data.first
+cheapest = product.offers.select(&:price).min_by(&:price)
+puts "Cheapest: #{cheapest.price} #{cheapest.currency} at #{cheapest.retailer}"
+```
+
+## Errors, rate limits and credits
+
+Every API error is raised as an `APIError` (or a subclass: `AuthenticationError`, `NotFoundError`,
+`ValidationError`, `RateLimitError`, `CreditsExhaustedError`). Each carries `message` (the API's `error` text),
+`status_code`, `code`, `action`, `docs_url`, `request_id` and `retry_after_seconds`. Rescue the class or branch on
+`code`, not on the HTTP status: a rate limit and exhausted credits both arrive as HTTP 429.
+
+- `RateLimitError` (`ERR_RATE_LIMIT`): wait `retry_after_seconds`, then retry.
+- `CreditsExhaustedError` (`ERR_CREDITS_EXHAUSTED`): do not retry. Credits return when the billing period resets or the plan is upgraded. It is not a `RateLimitError`.
+
+```ruby
+require 'shopsavvy_data_api'
+
+client = ShopsavvyDataApi.new(api_key: ENV.fetch('SHOPSAVVY_API_KEY'))
+
+begin
+  result = client.get_current_offers('611247373064')
+rescue ShopsavvyDataApi::RateLimitError => e
+  sleep(e.retry_after_seconds || 1)
+  result = client.get_current_offers('611247373064') # retry once
+rescue ShopsavvyDataApi::CreditsExhaustedError
+  puts 'Credits are used up. Retrying will not help; wait for the reset or upgrade the plan.'
+rescue ShopsavvyDataApi::APIError => e
+  puts "#{e.code}: #{e.message}"
+  puts "Fix: #{e.action}"
+  puts "Docs: #{e.docs_url}"
+end
 ```
 
 ## 🚀 Installation & Setup
@@ -36,9 +70,9 @@ gem install shopsavvy-sdk
 
 ### Get Your API Key
 
-1. **Sign up**: Visit [shopsavvy.com/data](https://shopsavvy.com/data)
+1. **Start a plan**: Visit [shopsavvy.com/data](https://shopsavvy.com/data)
 2. **Choose plan**: Select based on your usage needs
-3. **Get API key**: Copy from your dashboard
+3. **Get API key**: Create one at [shopsavvy.com/data/api-keys](https://shopsavvy.com/data/api-keys)
 4. **Test**: Run the 30-second example above
 
 ### Environment Setup
