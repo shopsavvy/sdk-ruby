@@ -359,46 +359,48 @@ module ShopsavvyDataApi
     end
 
     def handle_response(response)
-      case response.status
-      when 200..299
-        response.body
-      when 401
-        raise AuthenticationError.new(
-          "Authentication failed. Check your API key.",
-          status_code: response.status,
-          response_data: response.body
-        )
-      when 404
-        raise NotFoundError.new(
-          "Resource not found",
-          status_code: response.status,
-          response_data: response.body
-        )
-      when 422
-        raise ValidationError.new(
-          "Request validation failed. Check your parameters.",
-          status_code: response.status,
-          response_data: response.body
-        )
-      when 429
-        raise RateLimitError.new(
-          "Rate limit exceeded. Please slow down your requests.",
-          status_code: response.status,
-          response_data: response.body
-        )
-      else
-        error_message = if response.body.is_a?(Hash) && response.body["error"]
-                          response.body["error"]
-                        else
-                          "HTTP #{response.status}: #{response.reason_phrase}"
-                        end
+      return response.body if (200..299).cover?(response.status)
 
-        raise APIError.new(
-          error_message,
-          status_code: response.status,
-          response_data: response.body
-        )
+      raise build_api_error(response)
+    end
+
+    # Maps a non-2xx response onto the typed error family, from error_detail.code first.
+    def build_api_error(response)
+      body = response.body
+      data = body.is_a?(Hash) ? body : {}
+      detail = data["error_detail"].is_a?(Hash) ? data["error_detail"] : {}
+      meta = data["meta"].is_a?(Hash) ? data["meta"] : {}
+      code = detail["code"]
+      status = response.status
+      message = data["error"].is_a?(String) ? data["error"] : nil
+      fields = {
+        status_code: status,
+        response_data: body,
+        code: code,
+        action: detail["action"],
+        docs_url: detail["docs_url"],
+        request_id: meta["request_id"],
+        retry_after_seconds: parse_retry_after(response.headers["Retry-After"])
+      }
+
+      if code == "ERR_CREDITS_EXHAUSTED"
+        CreditsExhaustedError.new(message || "Credits exhausted", **fields)
+      elsif code == "ERR_RATE_LIMIT" || (code.nil? && status == 429)
+        RateLimitError.new(message || "Rate limit exceeded. Please slow down your requests.", **fields)
+      elsif status == 401
+        AuthenticationError.new(message || "Authentication failed. Check your API key.", **fields)
+      elsif status == 404
+        NotFoundError.new(message || "Resource not found", **fields)
+      elsif [400, 422].include?(status)
+        ValidationError.new(message || "Request validation failed. Check your parameters.", **fields)
+      else
+        APIError.new(message || "HTTP #{status}: #{response.reason_phrase}", **fields)
       end
+    end
+
+    # Retry-After as whole seconds; nil when absent or an HTTP-date.
+    def parse_retry_after(value)
+      value.to_s.strip =~ /\A\d+\z/ ? value.to_s.strip.to_i : nil
     end
   end
 end
